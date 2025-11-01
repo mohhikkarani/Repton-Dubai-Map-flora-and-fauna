@@ -126,7 +126,7 @@
                     { common: "Zoysia / Manila Grass", scientific: "Zoysia matrella (L.) Merr.", habitat: "Perennial grass growing primarily in the wet tropical biome. Grows in low elevations, preferring sandy soils.", native: "Tropical & Subtropical Asia to the Northwest Pacific." },
                     { common: "Mamey Sapote", scientific: "Pouteria sapota (Jacq.) H.E.Moore & Stearn", habitat: "Prefers smooth sandy, deep, clay and fertile soils.", native: "Southern Mexico and Central America." },
                     { common: "Tamarind", scientific: "Tamarindus indica L.", habitat: "Dry savannas, woodlands, and deciduous bushlands.", native: "Native to tropical Africa." },
-                    { common: "Japanese Yew", scientific: "Taxus cuspidata Siebold & Zucc.", habitat: "Evergreen forests and temperate regions.", native: "Japan, Korea, northeast China, and the extreme southeast of Russia." },
+                    { common: "Japanese Yew", scientific: "Taxus cuspidata Siebold & Zucc.", habitat: "Evergreen forests and temperate regions.", native: "Japan, Korea, China." },
                     { common: "Mareer", scientific: "Cordia subcordata Lam.", habitat: "Seasonally dry tropical biome, especially coastal forests.", native: "Somalia to northern Mozambique, across the western Indian Ocean to the Pacific islands." },
                     { common: "Geigertree", scientific: "Cordia sebestena L.", habitat: "Coastal environments, often in dry, broadleaf evergreen forests and shrublands.", native: "American tropics (southern Florida, Bahamas, Central America, Greater Antilles)." },
                     { common: "Bermudagrass", scientific: "Cynodon dactylon (L.) Pers.", habitat: "Grasslands, savannas, disturbed sites, and cultivated areas.", native: "Native to the Old World tropics and subtropics (Europe, Africa, Asia, and Australia)." },
@@ -141,16 +141,39 @@
 
         window.onload = function() {
             try {
-                // Initialize the map centered slightly off-center of the data for better view
+                // Define the bounding box of the area to prevent users from panning away.
+                // These coordinates roughly define the area of all markers.
+                const southWest = L.latLng(25.190, 55.250);
+                const northEast = L.latLng(25.220, 55.290);
+                const bounds = L.latLngBounds(southWest, northEast);
+
+                // Set the initial center and zoom level
                 const centerLat = 25.2025;
                 const centerLng = 55.2725;
+                const initialZoom = 14; 
 
-                map = L.map('map').setView([centerLat, centerLng], 14);
+                // Initialize the map with interaction disabled and bounds set
+                map = L.map('map', {
+                    // Disable all movement and zooming
+                    dragging: false,
+                    zoomControl: false, // Hide the +/- zoom buttons
+                    scrollWheelZoom: false,
+                    doubleClickZoom: false,
+                    touchZoom: false,
+                    boxZoom: false,
+                    keyboard: false,
+                    // Keep the map centered on the school area
+                    maxBounds: bounds,
+                    minZoom: initialZoom, // Prevent zooming out
+                    maxZoom: initialZoom  // Prevent zooming in (optional, but ensures a static view)
+                }).setView([centerLat, centerLng], initialZoom);
 
                 // Add OpenStreetMap tiles
                 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    maxZoom: 19,
-                    attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                    attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+                    // Setting bounds here ensures the tiles don't load outside the campus area
+                    bounds: bounds, 
+                    maxNativeZoom: 18 
                 }).addTo(map);
 
                 // Add markers for each location
@@ -180,7 +203,6 @@
                     // Create the marker and bind the popup
                     const marker = L.marker([location.lat, location.lng]).addTo(map)
                         .bindPopup(popupContent, {
-                            // Ensure the popup can handle a lot of content without being tiny
                             maxHeight: 500,
                             minWidth: 300
                         });

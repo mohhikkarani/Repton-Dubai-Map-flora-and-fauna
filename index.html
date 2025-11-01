@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Flora & Fauna Footprint Map</title>
+    <!-- Tailwind CSS CDN for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Set the map container height and width */
+        #map {
+            height: 80vh; /* 80% of the viewport height */
+            width: 100%;
+            border-radius: 12px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+
+        /* Leaflet CSS (required) */
+        @import url('https://unpkg.com/leaflet@1.9.4/dist/leaflet.css');
+
+        /* Custom scrollbar for popups on small screens */
+        .leaflet-popup-content-wrapper {
+            max-width: 90vw !important; /* Ensure popups don't overflow on mobile */
+        }
+        .species-list {
+            max-height: 40vh;
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: #888 #f1f1f1;
+        }
+        .species-list::-webkit-scrollbar {
+            width: 6px;
+        }
+        .species-list::-webkit-scrollbar-thumb {
+            background-color: #9ca3af;
+            border-radius: 10px;
+        }
+    </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-gray-50 p-4 sm:p-8 font-sans">
+
+    <div class="max-w-7xl mx-auto">
+        <header class="mb-6 text-center">
+            <h1 class="text-3xl font-extrabold text-gray-900 sm:text-4xl">Campus Biodiversity Map</h1>
+            <p class="mt-2 text-lg text-gray-600">Explore the flora and fauna across different school areas. Tap on a marker to view details.</p>
+        </header>
+
+        <!-- Map Container -->
+        <div id="map" class="shadow-xl"></div>
+
+        <footer class="mt-8 text-center text-gray-500 text-sm">
+            <p>Data based on uploaded flora and fauna CSV sheets. Coordinates are illustrative.</p>
+        </footer>
+    </div>
+
+    <!-- Leaflet JS CDN -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <script>
+        // Data compiled from the provided CSV snippets, grouped by location.
+        // Arbitrary coordinates near a central area (like Dubai) are used for visualization.
+        const floraFaunaData = [
+            {
+                lat: 25.195,
+                lng: 55.280,
+                name: "Main Gate Area",
+                species: [
+                    { common: "Olive", scientific: "Olea europaea L.", habitat: "Mediterranean climates", native: "Mediterranean region" },
+                    { common: "Weeping Fig", scientific: "Ficus benjamina L.", habitat: "Rainforest, Monsoon Forest", native: "Indian subcontinent, Southeast Asia" },
+                    { common: "Date Palm", scientific: "Phoenix dactylifera L.", habitat: "Terrestrial (Desert / Semi-Desert) oases", native: "Fertile Crescent/Persian Gulf" },
+                    { common: "Kikuyu Grass", scientific: "Cenchrus clandestinus (Hochst. ex Chiov.) Morrone", habitat: "Seasonally dry tropical biome", native: "East African highlands" },
+                ]
+            },
+            {
+                lat: 25.200,
+                lng: 55.275,
+                name: "Repton Circle Area",
+                species: [
+                    { common: "Tamarind", scientific: "Tamarindus indica L.", habitat: "Dry savannas, woodlands", native: "Tropical Africa" },
+                    { common: "Japanese Yew", scientific: "Taxus cuspidata Siebold & Zucc.", habitat: "Evergreen forests", native: "Japan, Korea, China" },
+                    { common: "Mareer", scientific: "Cordia subcordata Lam.", habitat: "Seasonally dry tropical biome", native: "Somalia to Mozambique" },
+                    { common: "Geigertree", scientific: "Cordia sebestena L.", habitat: "Coastal environments", native: "American tropics" },
+                ]
+            },
+            {
+                lat: 25.205,
+                lng: 55.270,
+                name: "Senior School Area",
+                species: [
+                    { common: "Tamarind", scientific: "Tamarindus indica L.", habitat: "Dry savannas, woodlands", native: "Tropical Africa" },
+                    { common: "Japanese Yew", scientific: "Taxus cuspidata Siebold & Zucc.", habitat: "Evergreen forests", native: "Japan, Korea, China" },
+                    { common: "Mareer", scientific: "Cordia subcordata Lam.", habitat: "Seasonally dry tropical biome", native: "Somalia to Mozambique" },
+                    { common: "Geigertree", scientific: "Cordia sebestena L.", habitat: "Coastal environments", native: "American tropics" },
+                ]
+            },
+            {
+                lat: 25.210,
+                lng: 55.265,
+                name: "Junior School Area",
+                species: [
+                    { common: "Golden Dew Drops", scientific: "Duranta erecta L.", habitat: "Rocky or sandy coastal areas", native: "The Americas" },
+                    { common: "Henna", scientific: "Lawsonia inermis L.", habitat: "Subtropical biome, dry coastal scrublands", native: "Northeast Tropical Africa, Arabia" },
+                    { common: "Sweet Mock Orange", scientific: "Philadelphus coronarius L.", habitat: "Scrub and woodland on warm rocky hills", native: "Caucasus, Turkey, Southern Europe" },
+                    { common: "Zoysia / Manila Grass", scientific: "Zoysia matrella (L.) Merr.", habitat: "Wet tropical biome, sandy soils", native: "Tropical & Subtropical Asia" },
+                ]
+            },
+            {
+                lat: 25.215,
+                lng: 55.260,
+                name: "Carpark / Green Zone",
+                species: [
+                    { common: "Golden Dew Drops", scientific: "Duranta erecta L.", habitat: "Evergreen sprawling shrub found in rocky or sandy coastal areas, or moister, disturbed sites inland.", native: "The Americas, from Mexico and the Caribbean south to Brazil and Argentina." },
+                    { common: "Henna", scientific: "Lawsonia inermis L.", habitat: "Shrub or tree growing primarily in the subtropical biome. Found in dry, coastal scrublands.", native: "Northeast Tropical Africa, the Arabian Peninsula, and South Pakistan to India." },
+                    { common: "Sweet Mock Orange", scientific: "Philadelphus coronarius L.", habitat: "Scrub and woodland on warm rocky hills and screes.", native: "Caucasus and northeastern Turkey, and parts of Southern Europe." },
+                    { common: "Zoysia / Manila Grass", scientific: "Zoysia matrella (L.) Merr.", habitat: "Perennial grass growing primarily in the wet tropical biome. Grows in low elevations, preferring sandy soils.", native: "Tropical & Subtropical Asia to the Northwest Pacific." },
+                    { common: "Mamey Sapote", scientific: "Pouteria sapota (Jacq.) H.E.Moore & Stearn", habitat: "Prefers smooth sandy, deep, clay and fertile soils.", native: "Southern Mexico and Central America." },
+                    { common: "Tamarind", scientific: "Tamarindus indica L.", habitat: "Dry savannas, woodlands, and deciduous bushlands.", native: "Native to tropical Africa." },
+                    { common: "Japanese Yew", scientific: "Taxus cuspidata Siebold & Zucc.", habitat: "Evergreen forests and temperate regions.", native: "Japan, Korea, northeast China, and the extreme southeast of Russia." },
+                    { common: "Mareer", scientific: "Cordia subcordata Lam.", habitat: "Seasonally dry tropical biome, especially coastal forests.", native: "Somalia to northern Mozambique, across the western Indian Ocean to the Pacific islands." },
+                    { common: "Geigertree", scientific: "Cordia sebestena L.", habitat: "Coastal environments, often in dry, broadleaf evergreen forests and shrublands.", native: "American tropics (southern Florida, Bahamas, Central America, Greater Antilles)." },
+                    { common: "Bermudagrass", scientific: "Cynodon dactylon (L.) Pers.", habitat: "Grasslands, savannas, disturbed sites, and cultivated areas.", native: "Native to the Old World tropics and subtropics (Europe, Africa, Asia, and Australia)." },
+                    { common: "Yellow Trumpet", scientific: "Handroanthus ochraceus (Cham.) Mattos", habitat: "Wet tropical biome, including forests, savannas, and shrublands.", native: "Central America to northwestern Argentina and Trinidad." },
+                    { common: "Mexican Petunia", scientific: "Ruellia simplex C. Wright", habitat: "Marshy/wet areas, wetlands, and disturbed sites with medium to wet soil.", native: "Native to southern North America, southern South America, and the Antilles." },
+                    { common: "Common Boxwood", scientific: "Buxus sempervirens L.", habitat: "Understory of forests, often on soils derived from chalk or limestone.", native: "Native to western and southern Europe, northwest Africa, and southwest Asia." },
+                ]
+            },
+        ];
+
+        let map;
+
+        window.onload = function() {
+            try {
+                // Initialize the map centered slightly off-center of the data for better view
+                const centerLat = 25.2025;
+                const centerLng = 55.2725;
+
+                map = L.map('map').setView([centerLat, centerLng], 14);
+
+                // Add OpenStreetMap tiles
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    maxZoom: 19,
+                    attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                }).addTo(map);
+
+                // Add markers for each location
+                floraFaunaData.forEach(location => {
+                    const speciesCount = location.species.length;
+
+                    // Build the popup content using Tailwind for clean, responsive design
+                    let popupContent = `
+                        <div class="p-2 font-sans w-64 max-w-full">
+                            <h3 class="text-xl font-bold text-blue-700 mb-2">${location.name}</h3>
+                            <p class="text-sm text-gray-600 mb-3">Total Species Logged: <span class="font-semibold text-blue-500">${speciesCount}</span></p>
+                            <div class="species-list border border-gray-200 rounded-lg p-3">
+                                ${location.species.map(s => `
+                                    <div class="mb-4 p-3 bg-white rounded-lg shadow-sm border border-gray-100">
+                                        <h4 class="text-base font-semibold text-gray-800">${s.common}</h4>
+                                        <p class="italic text-xs text-gray-500 mb-1">${s.scientific}</p>
+                                        <div class="text-xs space-y-1">
+                                            <p><span class="font-medium text-gray-700">Habitat:</span> ${s.habitat}</p>
+                                            <p><span class="font-medium text-gray-700">Native Range:</span> ${s.native}</p>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `;
+
+                    // Create the marker and bind the popup
+                    const marker = L.marker([location.lat, location.lng]).addTo(map)
+                        .bindPopup(popupContent, {
+                            // Ensure the popup can handle a lot of content without being tiny
+                            maxHeight: 500,
+                            minWidth: 300
+                        });
+
+                    // Add a tooltip that always shows the area name
+                    marker.bindTooltip(location.name, {
+                        permanent: true,
+                        direction: 'top',
+                        className: 'font-semibold bg-white text-gray-700 shadow-md p-1 rounded-md'
+                    });
+                });
+
+            } catch (error) {
+                console.error("An error occurred during map initialization:", error);
+                // Display a user-friendly error message in the map container
+                document.getElementById('map').innerHTML = `
+                    <div class="flex flex-col items-center justify-center h-full p-4 text-center">
+                        <svg class="w-12 h-12 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                        <p class="mt-2 text-lg font-medium text-gray-700">Map Loading Error</p>
+                        <p class="text-sm text-gray-500">Could not initialize the interactive map. Check the console for details.</p>
+                    </div>
+                `;
+            }
+        };
+
+    </script>
+</body>
+</html>
